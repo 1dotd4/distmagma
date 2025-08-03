@@ -71,8 +71,12 @@ def merge_items(file_name, done_queue):
 
 if __name__ == '__main__':
     # TODO: parse args for maxcpu, process.m, worker.m, merge.m, debuglevel
+    maxcpu = 4
+    timer_duration = 15 * 60 # 15 minutes
+
     logging.basicConfig(format='%(asctime)s: %(message)s', level=logging.DEBUG,
         datefmt='%Y/%m/%d %H:%M:%S')
+    logging.info("Starting collection")
     todo = collect_items("p.m")
     done = queue.Queue()
     logging.info(f"{todo.qsize()} items to process")
@@ -85,10 +89,10 @@ if __name__ == '__main__':
         if current == 0:
             logging.info(f"Todo status: Wrapping up")
         else:
-            threading.Timer(1, queue_status).start()
+            threading.Timer(timer_duration, queue_status).start()
 
-    threading.Timer(1, queue_status).start()
-    for progressive in range(4):
+    threading.Timer(timer_duration, queue_status).start()
+    for progressive in range(maxcpu):
         threading.Thread(target=worker, args=("w.m", progressive, todo, done), daemon=True).start()
 
     todo.join()
