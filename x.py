@@ -83,19 +83,25 @@ if __name__ == '__main__':
     logging.debug(list(todo.queue))
     total_work = todo.qsize()
 
+    t = None
+
     def queue_status():
         current = todo.qsize()
         logging.info(f"Todo status: {current} items remaining ({(1 - (current / total_work)):0.2f}% done)")
         if current == 0:
             logging.info(f"Todo status: Wrapping up")
         else:
-            threading.Timer(timer_duration, queue_status).start()
+            t = threading.Timer(timer_duration, queue_status)
+            t.start()
 
-    threading.Timer(timer_duration, queue_status).start()
+    t = threading.Timer(timer_duration, queue_status)
+    t.start()
     for progressive in range(maxcpu):
         threading.Thread(target=worker, args=("w.m", progressive, todo, done), daemon=True).start()
 
     todo.join()
+    if t.is_alive():
+        t.cancel()
     logging.info('All work done, now merging.')
     logging.debug(list(done.queue))
     merge_items("m.m", done)
