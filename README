@@ -1,0 +1,11 @@
+distmagma
+---------
+Parallel computation glue for Magma Computer Algebra
+
+FILES
+-----
+0.m   prelude file
+m.m   merger program
+p.m   producer program
+w.m   worker program
+x.py  distribution orchestrator
