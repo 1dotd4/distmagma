@@ -1,4 +1,6 @@
-// Load prelude here.
+load "0.m";
+
+read workerId; // Useful to log correctly.
 
 while true do
   read line; z := eval line;

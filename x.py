@@ -3,12 +3,20 @@ import queue
 import threading
 import logging
 
-def worker(file_name, todo_queue, done_queue):
+def worker(file_name, progressive, todo_queue, done_queue):
     with Popen(["magma", "-b", file_name], stdin = PIPE, stdout = PIPE, stderr = PIPE) as w:
+        # Wait for library loading
+        while True:
+            l = w.stdout.readline().decode('utf-8').strip()
+            if l == "READY":
+                break
+        # Tell the process its name for logging purposes
+        w.stdin.write((str(progressive) + "\n").encode('utf-8'))
+        w.stdin.flush()
         while True:
             item = todo_queue.get()
-            # Note: item shall not contain newlines!
-            w.stdin.write((item + "\n").encode('utf-8'))
+            # Note: purge newlines in item
+            w.stdin.write((item.replace("\n", " ")  + "\n").encode('utf-8'))
             w.stdin.flush()
             # Process output
             out = ""
@@ -23,15 +31,18 @@ def worker(file_name, todo_queue, done_queue):
             todo_queue.task_done()
 
 def collect_items(file_name):
-    # items = []
     q = queue.Queue()
     with Popen(["magma", "-b", file_name], stdin = PIPE, stdout = PIPE, stderr = PIPE) as p:
+        # Wait for library loading
+        while True:
+            l = p.stdout.readline().decode('utf-8').strip()
+            if l == "READY":
+                break
         while True:
             try:
                 line = p.stdout.readline()
                 if line == b'':
                     break
-                # items.append(line.decode('utf-8').strip())
                 q.put(line.decode('utf-8').strip())
             except:
                 break
@@ -39,9 +50,14 @@ def collect_items(file_name):
 
 def merge_items(file_name, done_queue):
     with Popen(["magma", "-b", file_name], stdin = PIPE, stdout = PIPE, stderr = PIPE) as w:
+        # Wait for library loading
+        while True:
+            l = w.stdout.readline().decode('utf-8').strip()
+            if l == "READY":
+                break
         for item in list(done_queue.queue):
-            # Note: item shall not contain newlines!
-            w.stdin.write((item + "\n").encode('utf-8'))
+            # Note: purge newlines in item
+            w.stdin.write((item.replace("\n", " ")  + "\n").encode('utf-8'))
             w.stdin.flush()
         w.stdin.write("false\n".encode('utf-8'))
         w.stdin.flush()
@@ -54,7 +70,7 @@ def merge_items(file_name, done_queue):
             logging.info(line.decode('utf-8').strip())
 
 if __name__ == '__main__':
-    # TODO: parse args for process.m, worker.m, merge.m, debuglevel
+    # TODO: parse args for maxcpu, process.m, worker.m, merge.m, debuglevel
     logging.basicConfig(format='%(asctime)s: %(message)s', level=logging.DEBUG,
         datefmt='%Y/%m/%d %H:%M:%S')
     todo = collect_items("p.m")
@@ -72,8 +88,8 @@ if __name__ == '__main__':
             threading.Timer(1, queue_status).start()
 
     threading.Timer(1, queue_status).start()
-    for _ in range(4):
-        threading.Thread(target=worker, args=("w.m", todo, done), daemon=True).start()
+    for progressive in range(4):
+        threading.Thread(target=worker, args=("w.m", progressive, todo, done), daemon=True).start()
 
     todo.join()
     logging.info('All work done, now merging.')

@@ -1,4 +1,4 @@
-// Load prelude here.
+load "0.m";
 
 for i in [1..10] do
   // Note: eval works as follow https://magma.maths.usyd.edu.au/magma/handbook/text/14X#98

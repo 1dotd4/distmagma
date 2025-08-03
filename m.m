@@ -1,4 +1,4 @@
-// Load prelude here.
+load "0.m";
 
 partialSum := 0;
 
