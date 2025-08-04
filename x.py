@@ -1,3 +1,19 @@
+# distmagma - parallel computation glue for Magma Computer Algebra
+# Copyright (C) 2025 d4 <coding@unpx.net>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 from subprocess import Popen, PIPE, STDOUT
 import queue
 import threading
@@ -86,8 +102,8 @@ if __name__ == '__main__':
     t = None
 
     def queue_status():
-        current = todo.qsize()
-        logging.info(f"Todo status: {current} items remaining ({(1 - (current / total_work)):0.2f}% done)")
+        current = done.qsize()
+        logging.info(f"Todo status: {current} items remaining ({(current / total_work):0.2f}% done)")
         if current == 0:
             logging.info(f"Todo status: Wrapping up")
         else:
