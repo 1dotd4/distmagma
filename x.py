@@ -18,6 +18,8 @@ from subprocess import Popen, PIPE, STDOUT
 import queue
 import threading
 import logging
+import time
+import pickle
 
 def worker(file_name, progressive, todo_queue, done_queue):
     with Popen(["magma", "-b", file_name], stdin = PIPE, stdout = PIPE, stderr = PIPE) as w:
@@ -68,14 +70,14 @@ def merge_items(file_name, done_queue):
     with Popen(["magma", "-b", file_name], stdin = PIPE, stdout = PIPE, stderr = PIPE) as w:
         # Wait for library loading
         while True:
-            l = w.stdout.readline().decode('utf-8').strip()
+            l = w.stdout.readline().decode("utf-8").strip()
             if l == "READY":
                 break
         for item in list(done_queue.queue):
             # Note: purge newlines in item
-            w.stdin.write((item.replace("\n", " ")  + "\n").encode('utf-8'))
+            w.stdin.write((item.replace("\n", " ")  + "\n").encode("utf-8"))
             w.stdin.flush()
-        w.stdin.write("false\n".encode('utf-8'))
+        w.stdin.write("false\n".encode("utf-8"))
         w.stdin.flush()
 
         while True:
@@ -85,41 +87,57 @@ def merge_items(file_name, done_queue):
                 break
             logging.info(line.decode('utf-8').strip())
 
+def compute_elapsed_time(start_time):
+    elapsed_time = time.time() - start_time
+    elapsed_seconds = f"{(elapsed_time % 60):0.0f}s"
+    elapsed_minutes = "" if elapsed_time < 60 else f"{((elapsed_time / 60) % 60):0.0f}m"
+    elapsed_hours = "" if elapsed_time < 3600 else f"{((elapsed_time / 3600) % 24):0.0f}h"
+    elapsed_days = "" if elapsed_time < 86400 else f"{(elapsed_time / 86400):0.0f}d"
+    return elapsed_days + elapsed_hours + elapsed_minutes + elapsed_seconds
+
+# Timer thread, using a list because otherwise would not be shared between threads
+t = [None] 
+
 if __name__ == '__main__':
     # TODO: parse args for maxcpu, process.m, worker.m, merge.m, debuglevel
     maxcpu = 4
-    timer_duration = 15 * 60 # 15 minutes
+    timer_duration = 5 # 15 * 60 # 15 minutes
 
-    logging.basicConfig(format='%(asctime)s: %(message)s', level=logging.DEBUG,
-        datefmt='%Y/%m/%d %H:%M:%S')
+    logging.basicConfig(format="%(asctime)s: %(message)s", level=logging.DEBUG,
+        datefmt="%Y/%m/%d %H:%M:%S")
     logging.info("Starting collection")
     todo = collect_items("p.m")
     done = queue.Queue()
     logging.info(f"{todo.qsize()} items to process")
-    logging.debug(list(todo.queue))
+    # logging.debug(list(todo.queue))
     total_work = todo.qsize()
 
-    t = None
+    start_time = time.time()
 
     def queue_status():
+        remaining = todo.qsize()
         current = done.qsize()
-        logging.info(f"Todo status: {current} items remaining ({(current / total_work):0.2f}% done)")
-        if current == 0:
+        elapsed_time = compute_elapsed_time(start_time)
+        logging.info(f"Todo status: {remaining} items remaining"
+                    + f" ({(100 * current / total_work):0.2f}% done) in {elapsed_time}")
+        if current == total_work:
             logging.info(f"Todo status: Wrapping up")
         else:
-            t = threading.Timer(timer_duration, queue_status)
-            t.start()
+            t[0] = threading.Timer(timer_duration, queue_status)
+            t[0].start()
 
-    t = threading.Timer(timer_duration, queue_status)
-    t.start()
+    t[0] = threading.Timer(timer_duration, queue_status)
+    t[0].start()
     for progressive in range(maxcpu):
         threading.Thread(target=worker, args=("w.m", progressive, todo, done), daemon=True).start()
 
     todo.join()
-    if t.is_alive():
-        t.cancel()
-    logging.info('All work done, now merging.')
-    logging.debug(list(done.queue))
+    t[0].cancel()
+    elapsed_time = compute_elapsed_time(start_time)
+    logging.info(f"All work done in {elapsed_time}, now merging.")
+    # logging.debug(list(done.queue))
+    with open("done.pickle", "wb") as f:
+        pickle.dump(list(done.queue), f)
     merge_items("m.m", done)
-    logging.info('Merge done.')
+    logging.info("Merge done.")
 
