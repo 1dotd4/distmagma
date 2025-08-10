@@ -25,16 +25,16 @@ def worker(file_name, progressive, todo_queue, done_queue):
     with Popen(["magma", "-b", file_name], stdin = PIPE, stdout = PIPE, stderr = PIPE) as w:
         # Wait for library loading
         while True:
-            l = w.stdout.readline().decode('utf-8').strip()
+            l = w.stdout.readline().decode("utf-8").strip()
             if l == "READY":
                 break
         # Tell the process its name for logging purposes
-        w.stdin.write((str(progressive) + "\n").encode('utf-8'))
+        w.stdin.write((str(progressive) + "\n").encode("utf-8"))
         w.stdin.flush()
         while True:
             item = todo_queue.get()
             # Note: purge newlines in item
-            w.stdin.write((item.replace("\n", " ")  + "\n").encode('utf-8'))
+            w.stdin.write((item.replace("\n", " ")  + "\n").encode("utf-8"))
             w.stdin.flush()
             # Process output
             out = ""
@@ -44,7 +44,7 @@ def worker(file_name, progressive, todo_queue, done_queue):
                 #       to signal end of output, otherwise hangs.
                 if line_out == b'\n':
                     break
-                out += line_out.decode('utf-8').strip()
+                out += line_out.decode("utf-8").strip()
             done_queue.put(out)
             todo_queue.task_done()
 
@@ -53,7 +53,7 @@ def collect_items(file_name):
     with Popen(["magma", "-b", file_name], stdin = PIPE, stdout = PIPE, stderr = PIPE) as p:
         # Wait for library loading
         while True:
-            l = p.stdout.readline().decode('utf-8').strip()
+            l = p.stdout.readline().decode("utf-8").strip()
             if l == "READY":
                 break
         while True:
@@ -61,7 +61,7 @@ def collect_items(file_name):
                 line = p.stdout.readline()
                 if line == b'':
                     break
-                q.put(line.decode('utf-8').strip())
+                q.put(line.decode("utf-8").strip())
             except:
                 break
     return q
@@ -85,7 +85,7 @@ def merge_items(file_name, done_queue):
             line = w.stdout.readline()
             if line == b'':
                 break
-            logging.info(line.decode('utf-8').strip())
+            logging.info(line.decode("utf-8").strip())
 
 def compute_elapsed_time(start_time):
     elapsed_time = time.time() - start_time
@@ -101,7 +101,7 @@ t = [None]
 if __name__ == '__main__':
     # TODO: parse args for maxcpu, process.m, worker.m, merge.m, debuglevel
     maxcpu = 4
-    timer_duration = 5 # 15 * 60 # 15 minutes
+    timer_duration = 15 * 60 # 15 minutes
 
     logging.basicConfig(format="%(asctime)s: %(message)s", level=logging.DEBUG,
         datefmt="%Y/%m/%d %H:%M:%S")
@@ -139,5 +139,6 @@ if __name__ == '__main__':
     with open("done.pickle", "wb") as f:
         pickle.dump(list(done.queue), f)
     merge_items("m.m", done)
-    logging.info("Merge done.")
+    elapsed_time = compute_elapsed_time(start_time)
+    logging.info(f"Merge done. Total time: {elapsed_time}.")
 
