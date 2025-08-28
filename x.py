@@ -90,9 +90,9 @@ def merge_items(file_name, done_queue):
 def compute_elapsed_time(start_time):
     elapsed_time = time.time() - start_time
     elapsed_seconds = f"{(elapsed_time % 60):0.0f}s"
-    elapsed_minutes = "" if elapsed_time < 60 else f"{((elapsed_time / 60) % 60):0.0f}m"
-    elapsed_hours = "" if elapsed_time < 3600 else f"{((elapsed_time / 3600) % 24):0.0f}h"
-    elapsed_days = "" if elapsed_time < 86400 else f"{(elapsed_time / 86400):0.0f}d"
+    elapsed_minutes = "" if elapsed_time < 60 else f"{int((elapsed_time / 60) % 60)}m"
+    elapsed_hours = "" if elapsed_time < 3600 else f"{int((elapsed_time / 3600) % 24)}h"
+    elapsed_days = "" if elapsed_time < 86400 else f"{int(elapsed_time / 86400)}d"
     return elapsed_days + elapsed_hours + elapsed_minutes + elapsed_seconds
 
 # Timer thread, using a list because otherwise would not be shared between threads
@@ -118,7 +118,8 @@ if __name__ == '__main__':
         remaining = todo.qsize()
         current = done.qsize()
         elapsed_time = compute_elapsed_time(start_time)
-        logging.info(f"Todo status: {remaining} items remaining"
+        logging.info(f"Todo status: processing {total_work - current - remaining} itmes."
+                    + f"{remaining} items remaining"
                     + f" ({(100 * current / total_work):0.2f}% done) in {elapsed_time}")
         if current == total_work:
             logging.info(f"Todo status: Wrapping up")
