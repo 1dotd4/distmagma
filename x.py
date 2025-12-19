@@ -15,6 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from subprocess import Popen, PIPE, STDOUT
+import signal
 import queue
 import threading
 import logging
@@ -126,6 +127,13 @@ if __name__ == '__main__':
         else:
             t[0] = threading.Timer(timer_duration, queue_status)
             t[0].start()
+
+    def dump_queue(signum, frame):
+        logging.info(f'Received SIGHUP: dumping done list to doing.pickle')
+        with open("doing.pickle", "wb") as f:
+            pickle.dump(list(done.queue), f)
+        logging.info('Dumping doing.pickle done')
+    signal.signal(signal.SIGHUP, dump_queue)
 
     t[0] = threading.Timer(timer_duration, queue_status)
     t[0].start()
